@@ -23,24 +23,49 @@
     <script>
         window.__getUserMediaOrigin = window.MediaDevices.prototype.getUserMedia
 
+
+        class FpsControl {
+            constructor(fps = 30) {
+                this.fps = fps;
+                this.now = Date.now();
+                this.then = Date.now();
+                this.interval = 1000 / this.fps;
+                this.delta;
+            }
+
+            check() {
+                this.now = Date.now();
+                this.delta = this.now - this.then;
+                if (this.delta > this.interval) {
+                    this.then = this.now - (this.delta % this.interval);
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }
+
+
         class FilterStream {
             VideoFilter;
+            FpsControl;
 
             constructor(stream) {
                 console.log("New Filter for stream", stream);
                 // let canvasSource = document.createElement("canvas");
                 // let canvasOutput = document.createElement("canvas");
+                // let video = document.createElement("video");
+                let video = document.getElementById('videoSource')
                 let canvasSource = document.getElementById('canvasSource')
                 let canvasOutput = document.getElementById('canvasOutput')
+
                 this.canvasSource = canvasSource.getContext("2d");
                 this.canvasOutput = canvasOutput.getContext("2d");
 
                 this.stream = stream;
-                // const video = document.createElement("video");
-                const video = document.getElementById('videoSource')
 
                 this.VideoFilter = new window.__wasm.VideoFilter(canvasSource, canvasOutput);
-
+                this.FpsControl = new FpsControl(10);
 
                 video.addEventListener("playing", () => {
                     // Use a 2D Canvas.
@@ -50,9 +75,7 @@
                     canvasSource.width = this.video.videoWidth;
                     canvasSource.height = this.video.videoHeight;
 
-                    // Use a WebGL Renderer.
-                    // this.renderer.setSize(this.video.videoWidth, this.video.videoHeight);
-                    this.update();
+                    this.startRenderer();
                 });
                 video.srcObject = stream;
                 video.autoplay = true;
@@ -77,18 +100,17 @@
 
                 // this.canvasOutput.putImageData(new ImageData(frame.data,width,height), 0, 0);
 
-                console.time('a');
+                // console.time('a');
                 this.VideoFilter.render()
-                console.timeEnd('a');
+                // console.timeEnd('a');
             }
 
-            update() {
-                this.render();
+            startRenderer() {
+                requestAnimationFrame(() => this.startRenderer());
 
-                // setInterval(() => {
-                    // this.render();
-                // }, 1000)
-                requestAnimationFrame(() => this.update());
+                if (this.FpsControl.check()) {
+                    this.render();
+                }
             }
         }
 
