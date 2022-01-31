@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="module">
+        import init, { greet, get_grayscale_image, get_canvas_width, VideoFilter } from "http://localhost:3000/pkg/mywasm.js";
+
+        init()
+            .then(() => {
+                window.__wasm = {
+                    greet,
+                    get_grayscale_image,
+                    get_canvas_width,
+                    VideoFilter
+                }
+            });
+    </script>
+
+    <script>
+        window.__getUserMediaOrigin = window.MediaDevices.prototype.getUserMedia
+
+        class FilterStream {
+            VideoFilter;
+
+            constructor(stream) {
+                console.log("New Filter for stream", stream);
+                // let canvasSource = document.createElement("canvas");
+                // let canvasOutput = document.createElement("canvas");
+                let canvasSource = document.getElementById('canvasSource')
+                let canvasOutput = document.getElementById('canvasOutput')
+                this.canvasSource = canvasSource.getContext("2d");
+                this.canvasOutput = canvasOutput.getContext("2d");
+
+                this.stream = stream;
+                // const video = document.createElement("video");
+                const video = document.getElementById('videoSource')
+
+                this.VideoFilter = new window.__wasm.VideoFilter(canvasSource, canvasOutput);
+
+
+                video.addEventListener("playing", () => {
+                    // Use a 2D Canvas.
+                    canvasOutput.width = this.video.videoWidth;
+                    canvasOutput.height = this.video.videoHeight;
+
+                    canvasSource.width = this.video.videoWidth;
+                    canvasSource.height = this.video.videoHeight;
+
+                    // Use a WebGL Renderer.
+                    // this.renderer.setSize(this.video.videoWidth, this.video.videoHeight);
+                    this.update();
+                });
+                video.srcObject = stream;
+                video.autoplay = true;
+                this.video = video;
+                //this.ctx = this.canvas.getContext('2d');
+                return canvasOutput.captureStream();
+            }
+
+            render() {
+                const width = this.video.videoWidth
+                const height = this.video.videoHeight
+                this.canvasSource.drawImage(this.video, 0, 0, width, height);
+                // const frame = this.canvasSource.getImageData(0, 0, width, height);
+
+                // window.__wasm.wasm_memory()[0] = frame.data
+                // let data = window.__wasm.get_grayscale_image(frame);
+                // console.log(window.__wasm.wasm_memory());
+
+                // for(let i = 0;i<frame.data.length;i+=4){
+                // frame.data[i] = 255
+                // }
+
+                // this.canvasOutput.putImageData(new ImageData(frame.data,width,height), 0, 0);
+
+                console.time('a');
+                this.VideoFilter.render()
+                console.timeEnd('a');
+            }
+
+            update() {
+                this.render();
+
+                // setInterval(() => {
+                    // this.render();
+                // }, 1000)
+                requestAnimationFrame(() => this.update());
+            }
+        }
+
+        window.navigator.mediaDevices.getUserMedia = async function () {
+            const args = arguments;
+            if (args.length && args[0].video) {
+                const constraints = {
+                    video: {
+                        facingMode: args[0].facingMode,
+                        advanced: args[0].video.advanced,
+                        width: args[0].video.width,
+                        height: args[0].video.height,
+                    },
+                    audio: args[0].audio ? args[0].audio : false,
+                };
+                const res = await window.__getUserMediaOrigin.call(
+                    navigator.mediaDevices,
+                    constraints
+                );
+                if (res) {
+                    return new FilterStream(res);
+                }
+            }
+
+            return window.__getUserMediaOrigin.call(navigator.mediaDevices, ...arguments)
+        }
+    </script>
+
+    <script src="./src/index.ts" type="module"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        .video-box {
+            width: 100vw;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: flex-start;
+        }
+
+        .video-box video {
+            width: 384px;
+            height: 216px;
+        }
+
+        .video-box canvas {
+            width: 384px;
+            height: 216px;
+        }
+
+        .video-box>div {
+            position: relative;
+        }
+
+        .video-box span {
+            position: absolute;
+            bottom: -20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="video-box">
+        <div>
+            <span>input</span>
+            <video id="videoSource"></video>
+        </div>
+        <div>
+            <span>canvas source</span>
+            <canvas id="canvasSource"></canvas>
+        </div>
+        <div>
+            <span>canvas output</span>
+            <canvas id="canvasOutput"></canvas>
+        </div>
+        <div>
+            <span>realvideo</span>
+            <video src="" width="400" height="400" id="videoTarget"></video>
+        </div>
+    </div>
+</body>
+
+</html>

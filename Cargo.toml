@@ -1,0 +1,27 @@
+[package]
+edition = "2021"
+name = "video-recorder"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+image = "0.23.14"
+js-sys = "0.3.56"
+wasm-bindgen = "0.2.79"
+qrcode = "0.12"
+
+[dependencies.web-sys]
+features = [
+  'CanvasRenderingContext2d',
+  'WebGlRenderingContext',
+  'Document',
+  'Element',
+  'HtmlCanvasElement',
+  'Window',
+  "ImageData",
+  "console",
+]
+version = "0.3.56"
